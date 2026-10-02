@@ -1,0 +1,186 @@
+/**
+ * The reading stage.
+ *
+ * Layout note: the stage is a flex container and the book is centred with
+ * `margin: auto` rather than `place-items: center`. The difference matters - a
+ * centred grid child becomes unreachable in the overflow direction, so at 200%
+ * zoom the reader could pan right but never left.
+ */
+
+.stage-host {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+/* The book and the thumbnail panel share one row. */
+.app__body {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+/* The toolbar floats above everything, so the top band is reserved here rather
+   than in the toolbar: fading the toolbar out must not move the book. */
+.app__body {
+  --chrome-band: var(--toolbar-height);
+}
+
+.stage-host {
+  padding-top: 0;
+}
+
+/* The start screen scrolls itself and must not reserve the toolbar band, because
+   the toolbar does not exist until a document is open. */
+.stage-host:has(> .start) {
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* The top band keeps the book clear of the floating toolbar. */
+  padding: calc(var(--chrome-band, 0px) + clamp(10px, 2.2vh, 26px)) clamp(12px, 2.4vw, 30px)
+    clamp(12px, 2.4vh, 30px);
+  /* Vertical panning must stay ours; horizontal is handled per gesture. */
+  touch-action: pan-y;
+}
+
+.stage__sizer {
+  flex: none;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage[data-zoomed='true'] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.stage[data-panning='true'] {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* --------------------------------------------------------------- start screen */
+
+.start {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: clamp(20px, 5vh, 56px) 20px;
+}
+
+.start__inner {
+  width: min(560px, 100%);
+  text-align: center;
+  animation: start-in var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes start-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.start__eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.start__title {
+  margin: 0 0 12px;
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 5.4vw, 40px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.start__lead {
+  margin: 0 auto 26px;
+  max-width: 44ch;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.start__keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+  margin: 26px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.start__keys > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.start__keys dt {
+  display: flex;
+  gap: 3px;
+  margin: 0;
+}
+
+.start__keys dd {
+  margin: 0;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border: 1px solid var(--surface-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-raised);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------- fullscreen */
+
+.app[data-fullscreen='true'] {
+  background: var(--bg-deep);
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 640px) {
+  .stage {
+    padding: 10px;
+  }
+
+  .start__lead {
+    font-size: 14px;
+  }
+}

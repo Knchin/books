@@ -1,0 +1,316 @@
+/**
+ * The toolbar.
+ *
+ * It sits in a fixed band at the top and fades rather than sliding, so the book
+ * never appears to move underneath it. `data-visible` drives opacity and
+ * pointer-events together: a hidden toolbar must not swallow a click meant for
+ * the page.
+ */
+
+.toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  height: var(--toolbar-height);
+  padding: 0 clamp(8px, 1.6vw, 16px);
+  background: linear-gradient(
+    180deg,
+    rgba(24, 20, 17, 0.94) 0%,
+    rgba(24, 20, 17, 0.86) 70%,
+    rgba(24, 20, 17, 0) 100%
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.toolbar[data-visible='false'] {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+.toolbar__inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+}
+
+.toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.toolbar__group--start {
+  justify-content: flex-start;
+}
+
+.toolbar__group--center {
+  justify-content: center;
+}
+
+.toolbar__group--end {
+  justify-content: flex-end;
+}
+
+.toolbar__file {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.toolbar__file:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+/* The document name is the one thing that must never push the layout around. */
+.toolbar__title {
+  margin: 0;
+  min-width: 0;
+  max-width: 30ch;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar__settings {
+  position: relative;
+}
+
+/* ----------------------------------------------------------- page indicator */
+
+.page-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.page-indicator:focus-within {
+  border-color: var(--accent);
+}
+
+.page-indicator__input {
+  width: 3.4ch;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  text-align: right;
+  color: var(--text);
+}
+
+.page-indicator__input:focus {
+  border-bottom-color: var(--accent);
+  outline: none;
+}
+
+.page-indicator__total {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* -------------------------------------------------------------------- zoom */
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.zoom-controls__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  min-width: 56px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-dim);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.zoom-controls__value:hover:not(:disabled) {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------- settings pop */
+
+.settings {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: 290px;
+  padding: 6px;
+  border: 1px solid var(--surface-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-popover);
+  animation: popover-in var(--dur-fast) var(--ease-out) both;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+.settings__group {
+  padding: 8px 8px 10px;
+}
+
+.settings__group + .settings__group {
+  border-top: 1px solid var(--surface-border);
+}
+
+.settings__title {
+  margin: 0 0 6px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.settings__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.settings__option:hover {
+  background: rgba(255, 246, 232, 0.05);
+}
+
+.settings__option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* A shared control shape for both the radio rows and the checkbox row: a filled
+   square with a tick, which reads as "selected" without a second visual style. */
+.settings__option-mark {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin-top: 1px;
+  border: 1.5px solid var(--surface-border-strong);
+  border-radius: 5px;
+  color: transparent;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.settings__option[data-checked='true'] .settings__option-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* The ring is drawn on the mark rather than the hidden input, so focus is always
+   visible even though the real control is off-screen. */
+.settings__option:focus-within .settings__option-mark {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.settings__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.settings__option-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settings__option-hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 860px) {
+  .toolbar__file-label,
+  .toolbar__title {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .toolbar__group--start .divider,
+  .zoom-controls__value span {
+    display: none;
+  }
+
+  .zoom-controls__value {
+    min-width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .settings {
+    right: -46px;
+    width: min(290px, calc(100vw - 24px));
+  }
+}

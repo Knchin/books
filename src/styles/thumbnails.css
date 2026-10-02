@@ -1,0 +1,180 @@
+/**
+ * The thumbnail filmstrip.
+ *
+ * It is a sibling of the stage rather than an overlay, so opening it shrinks the
+ * book instead of covering it - the same behaviour as a file browser sidebar, and
+ * the reason the book never has to be reflowed on top of itself.
+ */
+
+.thumbnails {
+  position: relative;
+  z-index: 20;
+  flex: none;
+  width: 168px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--surface-border);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: panel-in var(--dur-base) var(--ease-out) both;
+  /* The floating toolbar covers the top band; reserving it keeps the close
+     button reachable instead of hiding it underneath. */
+  padding-top: var(--chrome-band, 0px);
+  box-sizing: border-box;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+.thumbnails__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 46px;
+  padding: 0 8px 0 14px;
+  flex: none;
+}
+
+.thumbnails__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.thumbnails__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 10px 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 240, 220, 0.18) transparent;
+}
+
+.thumbnails__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.thumbnails__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 240, 220, 0.16);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.thumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 7px 0 9px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.thumbnail:hover {
+  background: rgba(255, 246, 232, 0.05);
+}
+
+.thumbnail__paper {
+  position: relative;
+  display: block;
+  border-radius: 2px 3px 3px 2px;
+  background: #f2ece0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 3px 10px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.thumbnail[data-active='true'] .thumbnail__paper {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.thumbnail__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A tile that has not decoded yet keeps its exact box, so the scrollbar never
+   jumps as bitmaps arrive. */
+.thumbnail__skeleton {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      100deg,
+      rgba(214, 203, 184, 0) 20%,
+      rgba(214, 203, 184, 0.85) 42%,
+      rgba(214, 203, 184, 0) 64%
+    ),
+    #eae3d5;
+  background-size: 220% 100%;
+  animation: thumb-shimmer 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes thumb-shimmer {
+  0% {
+    background-position: 140% 0;
+  }
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+.thumbnail__error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #b08a7e;
+  background: #efe4dc;
+}
+
+.thumbnail__number {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--text-faint);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.thumbnail[data-active='true'] .thumbnail__number {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 620px) {
+  .thumbnails {
+    width: 124px;
+  }
+
+  .thumbnail__number {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbnail__skeleton {
+    animation: none;
+  }
+}

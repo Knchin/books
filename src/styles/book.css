@@ -1,0 +1,625 @@
+/**
+ * The book.
+ *
+ * Physics notes
+ * -------------
+ * `.book-view` owns the `perspective`, so every page and sheet below it lives in
+ * a single shared 3D space - that shared space is what makes a turning sheet
+ * appear to pass in *front of* the facing page instead of sliding over a flat
+ * image.
+ *
+ * Each face of a sheet carries `backface-visibility: hidden`, and the rear face
+ * is pre-rotated 180deg. Two stacked faces therefore give a sheet whose reverse
+ * is correctly mirrored for free, which is the only way text stays readable on
+ * the back of a turning page.
+ *
+ * Progress arrives as custom properties written on `.book` from inside the
+ * animation frame:
+ *   --fp          0..1, how far the sheet has travelled
+ *   --fa          the resulting rotation, in degrees
+ *   --fl          triangle lighting term, 1 at mid-turn, 0 at both ends
+ *   --flip-active 0 at rest, 1 while a turn is running
+ *
+ * Every dependent effect - specular band, cast shadow, board shadow - is derived
+ * from those, so a finger drag and a timed turn follow exactly the same visual
+ * path and the two can never desynchronise.
+ *
+ * `abs()` is deliberately avoided: it is still missing from Safari, and the one
+ * place it would be needed is cheap to compute in the animation frame.
+ */
+
+.book-view {
+  position: relative;
+  transform-style: preserve-3d;
+  /* Long and shallow: enough parallax to read as an object on a table, short
+     enough that type stays legible near the edges. */
+  perspective: 2600px;
+  perspective-origin: 50% 44%;
+  /* A whisper of yaw so the spread never reads as a flat poster. */
+  transform: rotateY(-0.8deg);
+}
+
+.book {
+  position: relative;
+  transform-style: preserve-3d;
+  --spine-w: 0px;
+  --page-w: calc((100% - var(--spine-w)) / 2);
+  --page-right: calc(50% + (var(--spine-w) / 2));
+}
+
+.book-view--flat {
+  transform: none;
+}
+
+/* The spread shadows only make sense where there are two pages. */
+.book[data-view='single'] .turn-shadow {
+  display: none;
+}
+
+/* The paper block: gives the spread a body, sits behind everything, and casts
+   the shadow onto the table. */
+.book__block {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px 5px 5px 3px;
+  background: linear-gradient(180deg, var(--paper-edge) 0%, var(--paper-shade) 100%);
+  transform: translateZ(-7px);
+  box-shadow: var(--shadow-book);
+}
+
+/* Layered page edges along the fore edge: the thickness of a block of paper,
+   for free. */
+.book__block::before {
+  content: '';
+  position: absolute;
+  inset: 2px -4px -4px 2px;
+  border-radius: 2px 4px 5px 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.55) 0 1px,
+    rgba(120, 106, 88, 0.18) 1px 3px
+  );
+  opacity: 0.45;
+}
+
+.book__block::after {
+  content: '';
+  position: absolute;
+  inset: -3px 4px 4px -2px;
+  border-radius: 3px 5px 5px 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(90, 78, 64, 0.42) 0%,
+    transparent 14%,
+    transparent 86%,
+    rgba(90, 78, 64, 0.32) 100%
+  );
+}
+
+/* ------------------------------------------------------------------- pages */
+
+.page-slot {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: var(--page-w);
+  overflow: hidden;
+  transform-style: flat;
+  background: var(--paper);
+  box-shadow:
+    0 1px 2px rgba(60, 48, 34, 0.2),
+    0 6px 16px rgba(40, 30, 20, 0.12);
+}
+
+.page-slot--left {
+  left: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.page-slot--right {
+  left: var(--page-right);
+  border-radius: 0 4px 4px 0;
+}
+
+.page-slot--full {
+  left: 0;
+  width: 100%;
+  border-radius: 3px 4px 4px 3px;
+}
+
+/* Gutter shading: paper curves away into the spine, so it darkens there. Two
+   rules because they belong to different pages and must travel with the page
+   when a sheet lifts. */
+.page-slot--left::after,
+.page-slot--right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.page-slot--left::after {
+  right: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(60, 46, 30, 0) 0%,
+    rgba(60, 46, 30, 0.15) 60%,
+    rgba(42, 30, 18, 0.36) 100%
+  );
+}
+
+.page-slot--right::before {
+  left: 0;
+  background: linear-gradient(
+    270deg,
+    rgba(60, 46, 30, 0) 0%,
+    rgba(60, 46, 30, 0.12) 56%,
+    rgba(42, 30, 18, 0.32) 100%
+  );
+}
+
+/* Fore-edge lift: the outermost few millimetres of a bound block sit slightly
+   proud of the page. This is what stops a spread reading as two flat rectangles. */
+.page-slot--left::before,
+.page-slot--right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.page-slot--left::before {
+  left: 0;
+  background: linear-gradient(270deg, rgba(60, 46, 30, 0) 0%, rgba(60, 46, 30, 0.16) 100%);
+}
+
+.page-slot--right::after {
+  right: 0;
+  background: linear-gradient(90deg, rgba(60, 46, 30, 0) 0%, rgba(60, 46, 30, 0.18) 100%);
+}
+
+.page-surface {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* Paper grain. One tiled overlay shared by pages, sheets and blanks, so the
+   whole book reads as one material instead of three. */
+.page-surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--paper-grain);
+  background-size: 140px 140px;
+  mix-blend-mode: multiply;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.page-canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 0 0 1px rgba(120, 106, 88, 0.07);
+}
+
+/* --------------------------------------------------------------- the spine */
+
+.spine {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: calc(var(--spine-w) + 26px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 6;
+  background: linear-gradient(
+    90deg,
+    rgba(38, 28, 18, 0) 0%,
+    rgba(38, 28, 18, 0.3) 34%,
+    rgba(20, 14, 8, 0.62) 50%,
+    rgba(38, 28, 18, 0.3) 66%,
+    rgba(38, 28, 18, 0) 100%
+  );
+}
+
+.spine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 13%,
+    transparent 87%,
+    rgba(0, 0, 0, 0.32) 100%
+  );
+}
+
+/* --------------------------------------------------------- the turning sheet */
+
+.sheet {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transform-style: preserve-3d;
+  /* The only per-frame change on this element. */
+  will-change: transform;
+  z-index: 10;
+}
+
+.sheet--rigid {
+  transform: rotateY(var(--fa));
+}
+
+/*
+ * Single-page view.
+ *
+ * A page with nothing to land against cannot rotate about an edge without
+ * swinging itself out of the reading area, so it does what a phone reader does:
+ * it slides towards its hinge and fades, trailing a slight yaw so the motion
+ * belongs to the same visual language as a rigid turn.
+ *
+ * `--slide-x` is +/-1 and set from the DOM (`data-hinge`); `--fp` is progress.
+ */
+.sheet--slide {
+  --slide-x: -1;
+  transform: translate3d(calc(var(--fp) * var(--slide-x) * 108%), 0, 22px)
+    rotateY(calc(var(--fp) * var(--slide-x) * -7deg));
+  opacity: calc(1 - var(--fp) * var(--fp) * var(--fp));
+}
+
+/* The page being uncovered lifts slightly towards the reader as it arrives. */
+.book[data-view='single'] .page-slot {
+  transform: scale(calc(1 - 0.035 * var(--fp)));
+}
+
+.sheet--left {
+  left: 0;
+  width: var(--page-w);
+  transform-origin: right center;
+}
+
+.sheet--right {
+  left: var(--page-right);
+  width: var(--page-w);
+  transform-origin: left center;
+}
+
+.sheet--full {
+  left: 0;
+  width: 100%;
+  transform-origin: left center;
+}
+
+.sheet__face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--paper);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: flat;
+  box-shadow:
+    0 0 0 1px rgba(120, 106, 88, 0.09),
+    0 3px 14px rgba(40, 30, 20, 0.18);
+}
+
+.sheet__face--back {
+  transform: rotateY(180deg);
+}
+
+/* Gutter shading travels with the sheet, so the page keeps curving into the
+   spine wherever it happens to be. */
+.sheet--right .sheet__face--front::before,
+.sheet--left .sheet__face--front::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.sheet--right .sheet__face--front::before {
+  background: linear-gradient(
+    90deg,
+    rgba(42, 30, 18, 0.34) 0%,
+    rgba(60, 46, 30, 0.13) 32%,
+    rgba(60, 46, 30, 0) 60%
+  );
+}
+
+.sheet--left .sheet__face--front::before {
+  background: linear-gradient(
+    270deg,
+    rgba(42, 30, 18, 0.34) 0%,
+    rgba(60, 46, 30, 0.13) 32%,
+    rgba(60, 46, 30, 0) 60%
+  );
+}
+
+/* ------------------------------------------------------------ lighting model */
+
+/**
+ * Two light terms, both functions of progress:
+ *
+ *  1. `.sheet__light` darkens the sheet as it rotates away from the reader and
+ *     brightens it as it lands. A sheet of paper is never uniformly lit.
+ *  2. `.sheet__curl` is a specular band that travels from the hinge towards the
+ *     free edge, standing in for the cylindrical highlight a curved sheet shows.
+ *     This is the cheap stand-in for mesh deformation: it holds 60fps, it never
+ *     seams, and at reading scale it reads as curvature. True per-strip mesh
+ *     deformation was rejected because it triples the DOM per sheet, seams at
+ *     strip boundaries, and costs more than the effect is worth at this size.
+ */
+.sheet__light,
+.sheet__curl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.sheet__light {
+  background: #241a10;
+  opacity: calc(0.32 * var(--fl) * var(--flip-active));
+  mix-blend-mode: multiply;
+}
+
+.sheet__curl {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 252, 244, 0) 0%,
+    rgba(255, 254, 249, 0.45) 40%,
+    rgba(255, 255, 255, 0.72) 50%,
+    rgba(255, 254, 249, 0.45) 60%,
+    rgba(255, 252, 244, 0) 100%
+  );
+  background-size: 260% 100%;
+  background-position: calc(50% - var(--fp) * 105%) 0;
+  opacity: calc(0.46 * var(--fl) * var(--flip-active));
+  mix-blend-mode: soft-light;
+}
+
+/* The concave side of a sheet catches light differently; this asymmetry is the
+   detail that stops the back of a turning page looking like a mirrored photo. */
+.sheet__face--back .sheet__light {
+  background: #2b2015;
+  opacity: calc(0.2 * var(--fl) * var(--flip-active));
+}
+
+.sheet__face--back .sheet__curl {
+  opacity: calc(0.28 * var(--fl) * var(--flip-active));
+}
+
+/* ------------------------------------------------------- shadow onto the block */
+
+/**
+ * The sheet's shadow, cast onto the pages underneath.
+ *
+ * One element pools on the half being uncovered, one on the half the sheet is
+ * closing over. Both fade with progress and clear completely at rest, which is
+ * how a lifted sheet behaves.
+ */
+.turn-shadow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--page-w);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+}
+
+.turn-shadow--from {
+  left: 0;
+  background: linear-gradient(90deg, rgba(28, 20, 12, 0) 58%, rgba(28, 20, 12, 0.44) 100%);
+}
+
+.turn-shadow--to {
+  left: var(--page-right);
+  background: linear-gradient(90deg, rgba(28, 20, 12, 0.4) 0%, rgba(28, 20, 12, 0.05) 42%, rgba(28, 20, 12, 0) 100%);
+}
+
+/* Forwards: the shadow sweeps from the spine out towards the fore edge. */
+.book[data-flip='forward'] .turn-shadow--from {
+  opacity: calc(0.95 * var(--flip-active) * var(--fp));
+}
+
+.book[data-flip='forward'] .turn-shadow--to {
+  opacity: calc(0.8 * var(--flip-active) * var(--fp) * var(--fp));
+}
+
+/* Backwards: mirrored, and it pools deepest as the sheet lands. */
+.book[data-flip='backward'] .turn-shadow--from {
+  background: linear-gradient(270deg, rgba(28, 20, 12, 0) 58%, rgba(28, 20, 12, 0.44) 100%);
+  opacity: calc(0.95 * var(--flip-active) * var(--fp));
+}
+
+.book[data-flip='backward'] .turn-shadow--to {
+  background: linear-gradient(270deg, rgba(28, 20, 12, 0.4) 0%, rgba(28, 20, 12, 0.05) 42%, rgba(28, 20, 12, 0) 100%);
+  opacity: calc(0.8 * var(--flip-active) * var(--fp));
+}
+
+/* ---------------------------------------------------------------- hardcover */
+
+/* A hardcover's board is a different material to the pages: harder edges, a
+   low sheen, and a shadow deep enough to read as a solid object. */
+.book[data-cover='closed'] .book__block {
+  box-shadow:
+    0 42px 88px -16px rgba(0, 0, 0, 0.8),
+    0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* The board overhangs its page by a few pixels, the way a hardcover's boards
+   do, and it is thicker than a sheet of paper. */
+.sheet--cover {
+  overflow: visible;
+}
+
+.sheet--cover .sheet__face {
+  background: linear-gradient(155deg, #6f5e4a 0%, #58493b 44%, #473a2f 100%);
+  border-radius: 2px 6px 6px 2px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.38),
+    inset 0 0 0 1px rgba(255, 236, 208, 0.1),
+    0 0 0 3px rgba(52, 42, 32, 0.55),
+    0 10px 26px rgba(20, 14, 8, 0.4);
+}
+
+/* A closed cover is a solid object, not paper: no gutter shading. */
+.sheet--cover .sheet__face--front::before {
+  content: none;
+}
+
+.sheet--cover .sheet__face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--paper-grain);
+  background-size: 220px 220px;
+  mix-blend-mode: overlay;
+  opacity: 0.34;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.sheet--cover .page-surface::after {
+  opacity: 0.08;
+}
+
+.sheet--cover .sheet__light {
+  background: #1a1208;
+  opacity: calc(0.44 * var(--fl) * var(--flip-active));
+}
+
+.sheet--cover .sheet__curl {
+  opacity: calc(0.52 * var(--fl) * var(--flip-active));
+}
+
+/* ----------------------------------------------------------- single page view */
+
+/* A lone page cannot land on a facing page, so it lifts and sweeps away. The
+   shadow and a small tilt keep it in the same visual language as a rigid turn
+   rather than reading as a carousel. */
+.book[data-view='single'] .spine {
+  display: none;
+}
+
+/* ------------------------------------------------------------- page content */
+
+.page-skeleton {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      100deg,
+      rgba(224, 215, 198, 0) 20%,
+      rgba(224, 215, 198, 0.9) 42%,
+      rgba(224, 215, 198, 0) 64%
+    ),
+    repeating-linear-gradient(
+      180deg,
+      rgba(120, 106, 88, 0.06) 0 1px,
+      transparent 1px 26px
+    ),
+    #f4efe4;
+  background-size: 220% 100%, 100% 100%, 100% 100%;
+  animation: page-shimmer 1.5s var(--ease-in-out) infinite;
+}
+
+@keyframes page-shimmer {
+  0% {
+    background-position: 140% 0, 0 0, 0 0;
+  }
+  100% {
+    background-position: -40% 0, 0 0, 0 0;
+  }
+}
+
+.page-failed {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  color: #8b7a63;
+  font-size: 13px;
+  line-height: 1.5;
+  background: #f2ece0;
+}
+
+.page-blank {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, #eee7da 0%, #f6f2e9 46%, #e6ded0 100%);
+}
+
+.page-blank::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--paper-grain);
+  background-size: 140px 140px;
+  mix-blend-mode: multiply;
+  opacity: 0.14;
+}
+
+.page-label {
+  position: absolute;
+  bottom: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(60, 50, 38, 0.34);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.page-label--left {
+  left: 12px;
+}
+
+.page-label--right {
+  right: 12px;
+}
+
+/* ------------------------------------------------------------ accessibility */
+
+/*
+ * Reduced motion. The flip engine also skips its tween, so the page changes
+ * instantly and this layer simply guarantees nothing decorative is left over.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .book-view {
+    transform: none;
+    perspective: none;
+  }
+
+  .sheet {
+    transform: none !important;
+  }
+
+  .sheet__light,
+  .sheet__curl,
+  .turn-shadow {
+    opacity: 0 !important;
+  }
+
+  .page-skeleton {
+    animation: none;
+  }
+}

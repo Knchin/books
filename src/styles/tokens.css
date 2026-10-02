@@ -1,0 +1,87 @@
+/**
+ * Design tokens.
+ *
+ * The reading surface is deliberately the brightest thing on screen: a warm,
+ * low-chroma background so paper reads as paper, and a small, restrained accent
+ * used only for interactive affordances.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ---- Background: warm neutral, darker at the edges ---- */
+  --bg-base: #211d1a;
+  --bg-deep: #16130f;
+  --bg-raise: #2c2622;
+  --vignette: rgba(0, 0, 0, 0.55);
+
+  /* ---- Paper ---- */
+  --paper: #f6f2e9;
+  --paper-edge: #e6dfd1;
+  --paper-shade: #cdc3b1;
+  --ink: #22201d;
+
+  /* ---- Interface ---- */
+  --surface: rgba(38, 33, 29, 0.82);
+  --surface-solid: #262119;
+  --surface-raised: rgba(58, 51, 44, 0.9);
+  --surface-border: rgba(255, 246, 232, 0.1);
+  --surface-border-strong: rgba(255, 246, 232, 0.18);
+
+  --text: #f3ece2;
+  --text-dim: #b6aa9a;
+  --text-faint: #8b8072;
+
+  --accent: #d9a566;
+  --accent-soft: rgba(217, 165, 102, 0.16);
+  --accent-text: #1a1613;
+  --danger: #e08372;
+  --danger-soft: rgba(224, 131, 114, 0.14);
+
+  /* ---- Depth ---- */
+  --shadow-book: 0 34px 70px -18px rgba(0, 0, 0, 0.72), 0 8px 22px rgba(0, 0, 0, 0.42);
+  --shadow-panel: 0 18px 46px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 22px 54px rgba(0, 0, 0, 0.58);
+
+  /* ---- Geometry ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --toolbar-height: 60px;
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+
+  /* ---- Type ---- */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia,
+    'Times New Roman', serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ---- Book physics ----
+   * `--fp` is the live flip progress (0 = at rest, 1 = landed) and `--fa` the
+   * resulting rotation in degrees. Both are written from the animation frame by
+   * the flip engine; nothing here is animated by the CSS engine, so a pointer
+   * drag and a timed turn share exactly the same visual path.
+   */
+  --fp: 0;
+  --fa: 0;
+  --flip-active: 0;
+
+  /* Paper grain, generated once and reused. Low opacity, multiply blend. */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+  }
+}
